@@ -288,7 +288,12 @@ def perform_statistical_tests(df: pd.DataFrame):
     print("-" * 30)
     f_stat, p_value_anova = stats.f_oneway(*method_data)
     print(f"F-statistic: {f_stat:.4f}")
-    print(f"P-value: {p_value_anova:.6f}")
+
+    # Display p-value in scientific notation if very small
+    if p_value_anova < 1e-10:
+        print(f"P-value: {p_value_anova:.2e} (extremely small)")
+    else:
+        print(f"P-value: {p_value_anova:.6f}")
 
     alpha = 0.05
     if p_value_anova < alpha:
@@ -305,7 +310,12 @@ def perform_statistical_tests(df: pd.DataFrame):
     print("-" * 30)
     h_stat, p_value_kw = stats.kruskal(*method_data)
     print(f"H-statistic: {h_stat:.4f}")
-    print(f"P-value: {p_value_kw:.6f}")
+
+    # Display p-value in scientific notation if very small
+    if p_value_kw < 1e-10:
+        print(f"P-value: {p_value_kw:.2e} (extremely small)")
+    else:
+        print(f"P-value: {p_value_kw:.6f}")
 
     if p_value_kw < alpha:
         print(f"Result: SIGNIFICANT (p < {alpha})")
@@ -346,8 +356,14 @@ def perform_statistical_tests(df: pd.DataFrame):
             if is_significant:
                 significant_pairs.append((method1, method2, p_val))
 
+            # Format p-value display
+            if p_val < 1e-10:
+                p_val_str = f"{p_val:.2e}"
+            else:
+                p_val_str = f"{p_val:.6f}"
+
             print(
-                f"{method1} vs {method2}: t={t_stat:.3f}, p={p_val:.6f} {'*' if is_significant else ''}"
+                f"{method1} vs {method2}: t={t_stat:.3f}, p={p_val_str} {'*' if is_significant else ''}"
             )
 
         if significant_pairs:
@@ -355,8 +371,15 @@ def perform_statistical_tests(df: pd.DataFrame):
             for method1, method2, p_val in significant_pairs:
                 mean1 = df[df["method"] == method1]["boarding_time_minutes"].mean()
                 mean2 = df[df["method"] == method2]["boarding_time_minutes"].mean()
+
+                # Format p-value for display
+                if p_val < 1e-10:
+                    p_val_str = f"{p_val:.2e}"
+                else:
+                    p_val_str = f"{p_val:.6f}"
+
                 print(
-                    f"  {method1} ({mean1:.1f} min) vs {method2} ({mean2:.1f} min): p={p_val:.6f}"
+                    f"  {method1} ({mean1:.1f} min) vs {method2} ({mean2:.1f} min): p={p_val_str}"
                 )
         else:
             print("\nNo significant pairwise differences after Bonferroni correction.")
