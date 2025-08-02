@@ -87,7 +87,7 @@ def create_visualizations(df: pd.DataFrame):
 
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.suptitle(
-        "✈️ Airplane Boarding Time Analysis", fontsize=18, fontweight="bold", y=0.95
+        "Airplane Boarding Time Analysis", fontsize=18, fontweight="bold", y=0.95
     )
 
     # 1. Enhanced Box plot
@@ -100,7 +100,7 @@ def create_visualizations(df: pd.DataFrame):
         linewidth=1.2,
     )
     axes[0, 0].set_title(
-        "📊 Boarding Time Distribution by Method", fontweight="bold", pad=15
+        "Boarding Time Distribution by Method", fontweight="bold", pad=15
     )
     axes[0, 0].set_xlabel("Boarding Method", fontweight="bold")
     axes[0, 0].set_ylabel("Boarding Time (minutes)", fontweight="bold")
@@ -131,7 +131,7 @@ def create_visualizations(df: pd.DataFrame):
         linewidth=1.2,
     )
     axes[0, 1].set_title(
-        "🎻 Boarding Time Density Distribution", fontweight="bold", pad=15
+        "Boarding Time Density Distribution", fontweight="bold", pad=15
     )
     axes[0, 1].set_xlabel("Boarding Method", fontweight="bold")
     axes[0, 1].set_ylabel("Boarding Time (minutes)", fontweight="bold")
@@ -154,7 +154,7 @@ def create_visualizations(df: pd.DataFrame):
         error_kw={"linewidth": 2, "ecolor": "black"},
     )
     axes[1, 0].set_title(
-        "📈 Average Boarding Time with Standard Deviation", fontweight="bold", pad=15
+        "Average Boarding Time with Standard Deviation", fontweight="bold", pad=15
     )
     axes[1, 0].set_xlabel("Boarding Method", fontweight="bold")
     axes[1, 0].set_ylabel("Average Boarding Time (minutes)", fontweight="bold")
@@ -192,7 +192,7 @@ def create_visualizations(df: pd.DataFrame):
         )
 
     axes[1, 1].set_title(
-        "📊 Boarding Time Distribution Histograms", fontweight="bold", pad=15
+        "Boarding Time Distribution Histograms", fontweight="bold", pad=15
     )
     axes[1, 1].set_xlabel("Boarding Time (minutes)", fontweight="bold")
     axes[1, 1].set_ylabel("Frequency", fontweight="bold")
@@ -208,11 +208,13 @@ def create_visualizations(df: pd.DataFrame):
     ranking_data = df.groupby("method")["boarding_time_minutes"].mean().sort_values()
 
     # Create gradient colors for ranking
-    gradient_colors = plt.cm.RdYlGn_r(np.linspace(0.2, 0.8, len(ranking_data)))
+    gradient_colors = plt.cm.get_cmap("RdYlGn_r")(
+        np.linspace(0.2, 0.8, len(ranking_data))
+    )
 
     bars = plt.bar(
         range(len(ranking_data)),
-        ranking_data.values,
+        np.asarray(ranking_data.values, dtype=float),
         color=gradient_colors,
         edgecolor="black",
         linewidth=1.5,
@@ -220,11 +222,14 @@ def create_visualizations(df: pd.DataFrame):
     )
 
     plt.xticks(
-        range(len(ranking_data)), ranking_data.index, rotation=45, fontweight="bold"
+        range(len(ranking_data)),
+        list(map(str, ranking_data.index)),
+        rotation=45,
+        fontweight="bold",
     )
     plt.ylabel("Average Boarding Time (minutes)", fontweight="bold", fontsize=12)
     plt.title(
-        "🏆 Boarding Methods Efficiency Ranking\n(Lower Time = Better Performance)",
+        "Boarding Methods Efficiency Ranking\n(Lower Time = Better Performance)",
         fontweight="bold",
         fontsize=16,
         pad=20,
@@ -333,7 +338,9 @@ def perform_statistical_tests(df: pd.DataFrame):
             data1 = df[df["method"] == method1]["boarding_time_minutes"]
             data2 = df[df["method"] == method2]["boarding_time_minutes"]
 
-            t_stat, p_val = stats.ttest_ind(data1, data2)
+            ttest_result = stats.ttest_ind(data1, data2)
+            t_stat = ttest_result.statistic
+            p_val = ttest_result.pvalue
 
             is_significant = p_val < bonferroni_alpha
             if is_significant:
@@ -364,7 +371,11 @@ def perform_statistical_tests(df: pd.DataFrame):
         for group in method_data
     )
     ss_total = sum(
-        (df["boarding_time_minutes"] - np.mean(df["boarding_time_minutes"])) ** 2
+        (
+            df["boarding_time_minutes"].to_numpy()
+            - np.mean(df["boarding_time_minutes"].to_numpy())
+        )
+        ** 2
     )
     eta_squared = ss_between / ss_total
 
