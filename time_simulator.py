@@ -67,74 +67,78 @@ def _simulate_aisle_boarding(
     boarding_order: list[str], num_rows: int, num_columns: int
 ) -> float:
     """
-    Simulate boarding with realistic aisle dynamics where passengers board through
-    a single aisle with realistic congestion patterns.
+    Simulate boarding according to the Hebrew specification rules EXACTLY:
+    1. Walking time = 0 (negligible)
+    2. Luggage placement: exponential distribution (mean 0.5 minutes = 30 seconds) - EVERYONE has luggage
+    3. Sitting time: if blocked, exponential with mean (0.5 + 0.25 * blocking_count) minutes
+    4. Extra luggage: if last passenger in row, organize all luggage in overhead compartment
+    5. Ordering time = 0 (negligible)
+
+    Follow the rules exactly without any additional assumptions about entry intervals.
     """
-    # Realistic boarding flow: passengers can process in parallel once in the cabin
-    # The key insight: most of the boarding time is determined by the slowest passengers
-    # and aisle congestion, not the sum of all individual times
-
-    # Passengers enter the aircraft at regular intervals
-    entry_interval = 2.0  # seconds between entries
-
-    # Simulate passengers in groups that can board simultaneously
-    # In reality, 3-4 passengers can be processing their seats at the same time
-    concurrent_capacity = 4
-
-    current_time = 0.0
+    total_time = 0.0
     seated_passengers = {}
-    passengers_in_process = []
 
-    for i, seat in enumerate(boarding_order):
-        # Entry time for this passenger
-        entry_time = i * entry_interval
+    # Process passengers in their boarding order
+    for seat in boarding_order:
+        passenger_time = 0.0
 
-        # Calculate this passenger's individual boarding time
+        # Rule 1: Walking time = 0 (negligible) - no time added
+
+        # Rule 2: Luggage placement - exponential distribution (mean 0.5 minutes = 30 seconds)
+        # EVERYONE has luggage according to Hebrew specification
         luggage_time = np.random.exponential(TIME_LUGGAGE)
+        passenger_time += luggage_time
 
-        # Check for blocking (only matters for passengers in same row who are already seated)
+        # Rule 3: Sitting time - check for blocking
         blocking_count = _count_blocking_passengers(seat, seated_passengers)
 
         if blocking_count > 0:
-            sitting_time = np.random.exponential(
+            # If blocked: exponential with mean (0.5 + 0.25 * blocking_count) minutes
+            mean_sitting_time = (
                 TIME_SITTING_BLOCKED + blocking_count * TIME_PER_BLOCKING_PERSON
             )
-        else:
-            sitting_time = 5.0  # minimal time to sit when not blocked
+            sitting_time = np.random.exponential(mean_sitting_time)
+            passenger_time += sitting_time
+        # If not blocked, sitting time = 0 (negligible)
 
-        # Extra luggage (30% chance)
-        extra_luggage_time = 0.0
-        if np.random.random() < 0.3:
-            extra_luggage_time = np.random.exponential(TIME_EXTRA_LUGGAGE)
-
-        # Total time this passenger needs to complete boarding
-        passenger_completion_time = (
-            entry_time + luggage_time + sitting_time + extra_luggage_time
-        )
-
-        # Add to processing queue
-        passengers_in_process.append(
-            {"seat": seat, "completion_time": passenger_completion_time}
-        )
-
-        # Process completed passengers and maintain concurrent capacity
-        if (
-            len(passengers_in_process) >= concurrent_capacity
-            or i == len(boarding_order) - 1
+        # Rule 4: Extra luggage organization
+        # If this passenger is the last to board in their row, organize all luggage
+        if _is_last_passenger_in_row(
+            seat, boarding_order, seated_passengers, num_columns
         ):
-            # Find when the slowest passenger in this group completes
-            batch_completion_time = max(
-                p["completion_time"] for p in passengers_in_process
-            )
-            current_time = max(current_time, batch_completion_time)
+            # Organize luggage for all passengers in the row
+            extra_luggage_time = np.random.exponential(TIME_EXTRA_LUGGAGE)
+            passenger_time += extra_luggage_time
 
-            # Mark all passengers in this batch as seated
-            for passenger in passengers_in_process:
-                seated_passengers[passenger["seat"]] = True
+        # Rule 5: Ordering/arrangement time = 0 (negligible) - no time added
 
-            passengers_in_process = []
+        # Mark passenger as seated
+        seated_passengers[seat] = True
 
-    return current_time
+        # Add this passenger's time to the total boarding time
+        total_time += passenger_time
+
+    return total_time
+
+
+def _is_last_passenger_in_row(
+    seat: str, boarding_order: list[str], seated_passengers: dict, num_columns: int
+) -> bool:
+    """
+    Check if this passenger is the last one to board in their row.
+    Used to determine who organizes the overhead luggage compartment.
+    """
+    row_num = int(seat[:2])
+
+    # Count how many passengers in this row are already seated
+    seated_in_row = 0
+    for seated_seat in seated_passengers:
+        if seated_seat.startswith(f"{row_num:02d}"):
+            seated_in_row += 1
+
+    # After this passenger sits, they will be the last if seated_in_row + 1 == num_columns
+    return (seated_in_row + 1) == num_columns
 
 
 def _count_blocking_passengers(seat: str, seated_passengers: dict) -> int:

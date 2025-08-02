@@ -140,21 +140,23 @@ class TestBlockingLogic:
         # Sanity checks
         assert boarding_time > 0
 
-        # Realistic upper bound based on improved simulation behavior
-        # With the new simulation, boarding is much more efficient due to parallel processing
-        # Expect approximately 0.2-0.5 minutes per passenger for realistic boarding
-        max_expected_per_passenger = 30  # 30 seconds per passenger maximum
-        max_expected = num_rows * num_columns * max_expected_per_passenger
-        assert boarding_time < max_expected, (
-            f"Boarding time {boarding_time / 60:.1f} minutes seems too high for {num_rows}x{num_columns} airplane"
+        # Hebrew specification bounds - additive model where each passenger's time contributes
+        # Mean time per passenger: ~30s luggage + potential blocking + potential extra luggage
+        # Expected range: 30-120 seconds per passenger depending on blocking
+        min_expected_per_passenger = 25  # Minimum ~25 seconds per passenger
+        max_expected_per_passenger = (
+            180  # Maximum ~3 minutes per passenger in worst case
         )
 
-        # Also check that it's not unreasonably fast (should take some time)
-        # With parallel boarding, expect at least 2.5-3 seconds per passenger minimum
-        min_expected_per_passenger = 2.5  # 2.5 seconds per passenger minimum
-        min_expected = num_rows * num_columns * min_expected_per_passenger
+        total_passengers = num_rows * num_columns
+        min_expected = total_passengers * min_expected_per_passenger
+        max_expected = total_passengers * max_expected_per_passenger
+
         assert boarding_time > min_expected, (
             f"Boarding time {boarding_time / 60:.1f} minutes seems too fast for {num_rows}x{num_columns} airplane"
+        )
+        assert boarding_time < max_expected, (
+            f"Boarding time {boarding_time / 60:.1f} minutes seems too high for {num_rows}x{num_columns} airplane"
         )
 
     def test_consistent_seat_generation(self):
