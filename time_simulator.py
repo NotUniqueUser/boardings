@@ -76,29 +76,35 @@ def simulate_boarding_time(
         # In airplane seating ABC | DEF, passengers are blocked by those between them and the aisle
         # A is blocked by B,C; B is blocked by C; C has no blocking
         # D has no blocking; E is blocked by D; F is blocked by D,E
-        
+
         seat_letter = seat[2]  # Extract seat letter (A, B, C, D, E, F)
         blocking_passengers = 0
-        
+
         # Check for blocking passengers based on seat position
         for seated_seat, is_seated in seated_passengers.items():
             if is_seated and seated_seat.startswith(f"{row_num:02d}"):
                 seated_letter = seated_seat[2]
-                
+
                 # Left section (A, B, C) - blocked by seats closer to aisle (C)
-                if seat_letter in ['A', 'B']:
-                    if seated_letter == 'B' and seat_letter == 'A':  # B blocks A
+                if seat_letter in ["A", "B"]:
+                    if seated_letter == "B" and seat_letter == "A":  # B blocks A
                         blocking_passengers += 1
-                    elif seated_letter == 'C' and seat_letter in ['A', 'B']:  # C blocks A and B
+                    elif seated_letter == "C" and seat_letter in [
+                        "A",
+                        "B",
+                    ]:  # C blocks A and B
                         blocking_passengers += 1
-                
+
                 # Right section (D, E, F) - blocked by seats closer to aisle (D)
-                elif seat_letter in ['E', 'F']:
-                    if seated_letter == 'E' and seat_letter == 'F':  # E blocks F
+                elif seat_letter in ["E", "F"]:
+                    if seated_letter == "E" and seat_letter == "F":  # E blocks F
                         blocking_passengers += 1
-                    elif seated_letter == 'D' and seat_letter in ['E', 'F']:  # D blocks E and F
+                    elif seated_letter == "D" and seat_letter in [
+                        "E",
+                        "F",
+                    ]:  # D blocks E and F
                         blocking_passengers += 1
-                
+
                 # Aisle seats (C, D) are never blocked in this configuration
 
         if blocking_passengers > 0:
