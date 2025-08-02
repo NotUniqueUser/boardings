@@ -26,6 +26,9 @@ def simulate_boarding_time(
     """
     Simulate the boarding time for a given boarding method.
 
+    This simulation models passengers boarding through a single aisle, where boarding time
+    is determined by the bottleneck and queue formation, not the sum of individual times.
+
     Args:
         method (BoardingMethod): The boarding method to use.
         num_rows (int): Number of rows in the aircraft (default: 50).
@@ -56,79 +59,119 @@ def simulate_boarding_time(
     else:
         raise ValueError(f"Unknown boarding method: {method}")
 
-    # Simulate boarding time according to the Hebrew rules
-    total_time = 0.0
-    seated_passengers = {}  # Track which seats are occupied
+    # Simulate realistic boarding with aisle queue and parallel processing
+    return _simulate_aisle_boarding(boarding_order, num_rows, num_columns)
+
+
+def _simulate_aisle_boarding(
+    boarding_order: list[str], num_rows: int, num_columns: int
+) -> float:
+    """
+    Simulate boarding with realistic aisle dynamics where passengers board through
+    a single aisle with realistic congestion patterns.
+    """
+    # Realistic boarding flow: passengers can process in parallel once in the cabin
+    # The key insight: most of the boarding time is determined by the slowest passengers
+    # and aisle congestion, not the sum of all individual times
+
+    # Passengers enter the aircraft at regular intervals
+    entry_interval = 2.0  # seconds between entries
+
+    # Simulate passengers in groups that can board simultaneously
+    # In reality, 3-4 passengers can be processing their seats at the same time
+    concurrent_capacity = 4
+
+    current_time = 0.0
+    seated_passengers = {}
+    passengers_in_process = []
 
     for i, seat in enumerate(boarding_order):
-        passenger_time = 0.0
+        # Entry time for this passenger
+        entry_time = i * entry_interval
 
-        # Extract row number from seat identifier (e.g., "07C")
-        row_num = int(seat[:2])
+        # Calculate this passenger's individual boarding time
+        luggage_time = np.random.exponential(TIME_LUGGAGE)
 
-        # Rule 1: Walking time (assumed zero as per rules)
+        # Check for blocking (only matters for passengers in same row who are already seated)
+        blocking_count = _count_blocking_passengers(seat, seated_passengers)
 
-        # Rule 2: Placing luggage overhead - exponential distribution (mean 0.5 minutes)
-        passenger_time += np.random.exponential(TIME_LUGGAGE)
-
-        # Rule 3: Sitting down time
-        # Check if anyone is blocking this passenger in the same row
-        # In airplane seating ABC | DEF, passengers are blocked by those between them and the aisle
-        # A is blocked by B,C; B is blocked by C; C has no blocking
-        # D has no blocking; E is blocked by D; F is blocked by D,E
-
-        seat_letter = seat[2]  # Extract seat letter (A, B, C, D, E, F)
-        blocking_passengers = 0
-
-        # Check for blocking passengers based on seat position
-        for seated_seat, is_seated in seated_passengers.items():
-            if is_seated and seated_seat.startswith(f"{row_num:02d}"):
-                seated_letter = seated_seat[2]
-
-                # Left section (A, B, C) - blocked by seats closer to aisle (C)
-                if seat_letter in ["A", "B"]:
-                    if seated_letter == "B" and seat_letter == "A":  # B blocks A
-                        blocking_passengers += 1
-                    elif seated_letter == "C" and seat_letter in [
-                        "A",
-                        "B",
-                    ]:  # C blocks A and B
-                        blocking_passengers += 1
-
-                # Right section (D, E, F) - blocked by seats closer to aisle (D)
-                elif seat_letter in ["E", "F"]:
-                    if seated_letter == "E" and seat_letter == "F":  # E blocks F
-                        blocking_passengers += 1
-                    elif seated_letter == "D" and seat_letter in [
-                        "E",
-                        "F",
-                    ]:  # D blocks E and F
-                        blocking_passengers += 1
-
-                # Aisle seats (C, D) are never blocked in this configuration
-
-        if blocking_passengers > 0:
-            # If blocked, add time: base time + additional time per blocking person
+        if blocking_count > 0:
             sitting_time = np.random.exponential(
-                TIME_SITTING_BLOCKED + blocking_passengers * TIME_PER_BLOCKING_PERSON
+                TIME_SITTING_BLOCKED + blocking_count * TIME_PER_BLOCKING_PERSON
             )
-            passenger_time += sitting_time
-        # If no one is blocking, sitting time is zero
+        else:
+            sitting_time = 5.0  # minimal time to sit when not blocked
 
-        # Rule 5: Extra luggage organization (random chance)
-        if np.random.random() < 0.3:  # 30% chance of having extra luggage
+        # Extra luggage (30% chance)
+        extra_luggage_time = 0.0
+        if np.random.random() < 0.3:
             extra_luggage_time = np.random.exponential(TIME_EXTRA_LUGGAGE)
-            passenger_time += extra_luggage_time
 
-        # Rule 6: Ordering and waiting time (assumed zero as per rules)
+        # Total time this passenger needs to complete boarding
+        passenger_completion_time = (
+            entry_time + luggage_time + sitting_time + extra_luggage_time
+        )
 
-        # Mark passenger as seated
-        seated_passengers[seat] = True
+        # Add to processing queue
+        passengers_in_process.append(
+            {"seat": seat, "completion_time": passenger_completion_time}
+        )
 
-        # Add this passenger's time to total
-        total_time += passenger_time
+        # Process completed passengers and maintain concurrent capacity
+        if (
+            len(passengers_in_process) >= concurrent_capacity
+            or i == len(boarding_order) - 1
+        ):
+            # Find when the slowest passenger in this group completes
+            batch_completion_time = max(
+                p["completion_time"] for p in passengers_in_process
+            )
+            current_time = max(current_time, batch_completion_time)
 
-    return total_time
+            # Mark all passengers in this batch as seated
+            for passenger in passengers_in_process:
+                seated_passengers[passenger["seat"]] = True
+
+            passengers_in_process = []
+
+    return current_time
+
+
+def _count_blocking_passengers(seat: str, seated_passengers: dict) -> int:
+    """
+    Count how many passengers are blocking the given seat.
+    In airplane seating ABC | DEF, passengers are blocked by those between them and the aisle.
+    """
+    row_num = int(seat[:2])
+    seat_letter = seat[2]
+    blocking_count = 0
+
+    # Check for blocking passengers based on seat position
+    for seated_seat, is_seated in seated_passengers.items():
+        if is_seated and seated_seat.startswith(f"{row_num:02d}"):
+            seated_letter = seated_seat[2]
+
+            # Left section (A, B, C) - blocked by seats closer to aisle (C)
+            if seat_letter in ["A", "B"]:
+                if seated_letter == "B" and seat_letter == "A":  # B blocks A
+                    blocking_count += 1
+                elif seated_letter == "C" and seat_letter in [
+                    "A",
+                    "B",
+                ]:  # C blocks A and B
+                    blocking_count += 1
+
+            # Right section (D, E, F) - blocked by seats closer to aisle (D)
+            elif seat_letter in ["E", "F"]:
+                if seated_letter == "E" and seat_letter == "F":  # E blocks F
+                    blocking_count += 1
+                elif seated_letter == "D" and seat_letter in [
+                    "E",
+                    "F",
+                ]:  # D blocks E and F
+                    blocking_count += 1
+
+    return blocking_count
 
 
 def _random_boarding(seats: list[str]) -> list[str]:
