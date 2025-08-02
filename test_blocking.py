@@ -140,15 +140,19 @@ class TestBlockingLogic:
         # Sanity checks
         assert boarding_time > 0
 
-        # More realistic upper bound based on actual simulation behavior
-        # Each passenger takes on average 30-120 seconds depending on blocking and luggage
-        max_expected = num_rows * num_columns * 120  # 2 minutes per passenger max
+        # Realistic upper bound based on improved simulation behavior
+        # With the new simulation, boarding is much more efficient due to parallel processing
+        # Expect approximately 0.2-0.5 minutes per passenger for realistic boarding
+        max_expected_per_passenger = 30  # 30 seconds per passenger maximum
+        max_expected = num_rows * num_columns * max_expected_per_passenger
         assert boarding_time < max_expected, (
             f"Boarding time {boarding_time / 60:.1f} minutes seems too high for {num_rows}x{num_columns} airplane"
         )
 
         # Also check that it's not unreasonably fast (should take some time)
-        min_expected = num_rows * num_columns * 10  # At least 10 seconds per passenger
+        # With parallel boarding, expect at least 2.5-3 seconds per passenger minimum
+        min_expected_per_passenger = 2.5  # 2.5 seconds per passenger minimum
+        min_expected = num_rows * num_columns * min_expected_per_passenger
         assert boarding_time > min_expected, (
             f"Boarding time {boarding_time / 60:.1f} minutes seems too fast for {num_rows}x{num_columns} airplane"
         )
