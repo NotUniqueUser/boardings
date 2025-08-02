@@ -2,15 +2,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import random
 from scipy import stats
 from time_simulator import simulate_boarding_time, BoardingMethod
 
 
 def main():
-    np.random.seed(42)  # For reproducibility
-    random.seed(42)  # For reproducibility
-
     # Run simulations
     n_simulations = 100
     results = run_boarding_simulations(n_simulations)
@@ -96,8 +92,10 @@ def create_visualizations(df: pd.DataFrame):
         x="method",
         y="boarding_time_minutes",
         ax=axes[0, 0],
+        hue="method",
         palette=colors,
         linewidth=1.2,
+        legend=False,
     )
     axes[0, 0].set_title(
         "Boarding Time Distribution by Method", fontweight="bold", pad=15
@@ -126,9 +124,11 @@ def create_visualizations(df: pd.DataFrame):
         x="method",
         y="boarding_time_minutes",
         ax=axes[0, 1],
+        hue="method",
         palette=colors,
         inner="quart",
         linewidth=1.2,
+        legend=False,
     )
     axes[0, 1].set_title(
         "Boarding Time Density Distribution", fontweight="bold", pad=15
@@ -208,7 +208,7 @@ def create_visualizations(df: pd.DataFrame):
     ranking_data = df.groupby("method")["boarding_time_minutes"].mean().sort_values()
 
     # Create gradient colors for ranking
-    gradient_colors = plt.cm.get_cmap("RdYlGn_r")(
+    gradient_colors = plt.colormaps.get_cmap("RdYlGn_r")(
         np.linspace(0.2, 0.8, len(ranking_data))
     )
 
