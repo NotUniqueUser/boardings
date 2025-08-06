@@ -21,8 +21,7 @@ class TestBlockingLogic:
         methods = [
             BoardingMethod.RANDOM,
             BoardingMethod.BACK_TO_FRONT,
-            BoardingMethod.ROW_RANDOM,
-            BoardingMethod.WINDOW_MIDDLE_AISLE,
+            BoardingMethod.FRONT_TO_BACK,
             BoardingMethod.STEFFEN,
         ]
 
@@ -43,8 +42,7 @@ class TestBlockingLogic:
         methods = [
             BoardingMethod.RANDOM,
             BoardingMethod.BACK_TO_FRONT,
-            BoardingMethod.ROW_RANDOM,
-            BoardingMethod.WINDOW_MIDDLE_AISLE,
+            BoardingMethod.FRONT_TO_BACK,
             BoardingMethod.STEFFEN,
         ]
 
@@ -88,7 +86,7 @@ class TestBlockingLogic:
 
         methods_and_expected_patterns = [
             (
-                BoardingMethod.WINDOW_MIDDLE_AISLE,
+                BoardingMethod.FRONT_TO_BACK,
                 "should be efficient due to minimal blocking",
             ),
             (
