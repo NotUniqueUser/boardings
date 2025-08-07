@@ -9,6 +9,8 @@ TIME_SITTING_BLOCKED = 30
 # additional time per person blocking (0.25 * number of blocking people)
 TIME_PER_BLOCKING_PERSON = 15
 
+RAND = np.random.Generator(np.random.MT19937())
+
 
 class BoardingMethod(Enum):
     RANDOM = "Random"
@@ -80,7 +82,7 @@ def _simulate_aisle_boarding(
             passenger_time += last_time
 
         # Rule 2: Add luggage
-        passenger_time += np.random.exponential(TIME_LUGGAGE)
+        passenger_time += RAND.exponential(TIME_LUGGAGE)
 
         # Rule 3: Sit in seat - check for blocking within the row
         blocking_count = _count_blocking_passengers(seat, seated_passengers)
@@ -88,7 +90,7 @@ def _simulate_aisle_boarding(
             mean_sitting_time = (
                 TIME_SITTING_BLOCKED + blocking_count * TIME_PER_BLOCKING_PERSON
             )
-            passenger_time += np.random.exponential(mean_sitting_time)
+            passenger_time += RAND.exponential(mean_sitting_time)
 
         # Mark this passenger as seated
         seated_passengers[seat] = True
@@ -132,7 +134,7 @@ def _count_blocking_passengers(seat: str, seated_passengers: dict) -> int:
 def _random_boarding(seats: list[str]) -> list[str]:
     """Random boarding order."""
     shuffled_seats = seats.copy()
-    np.random.shuffle(shuffled_seats)
+    RAND.shuffle(shuffled_seats)
     return shuffled_seats
 
 
@@ -145,7 +147,7 @@ def _back_to_front_boarding(
 
     # Start from the back row and work forward
     for row in range(num_rows, 0, -1):
-        for letter in np.random.permutation(column_letters):
+        for letter in RAND.permutation(column_letters):
             seat = f"{row:02d}{letter}"
             if seat in seats:
                 boarding_order.append(seat)
@@ -162,7 +164,7 @@ def _front_to_back_boarding(
 
     # Start from the front row (row 1) and work toward the back
     for row in range(1, num_rows + 1):
-        for letter in np.random.permutation(column_letters):
+        for letter in RAND.permutation(column_letters):
             seat = f"{row:02d}{letter}"
             if seat in seats:
                 boarding_order.append(seat)
