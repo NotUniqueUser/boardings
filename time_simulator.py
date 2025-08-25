@@ -2,12 +2,12 @@ import numpy as np
 from enum import Enum
 
 # Time constants for boarding simulation, measured in seconds
-# exponential distribution for luggage placement (mean 0.5 minutes = 30 seconds)
-TIME_LUGGAGE = 30
+# exponential distribution for luggage placement
+TIME_LUGGAGE = 0.5
 # exponential distribution for sitting when blocked by others (base time)
-TIME_SITTING_BLOCKED = 30
+TIME_SITTING_BLOCKED = 0.5
 # additional time per person blocking (0.25 * number of blocking people)
-TIME_PER_BLOCKING_PERSON = 15
+TIME_PER_BLOCKING_PERSON = 0.25
 
 RAND = np.random.Generator(np.random.MT19937())
 
@@ -78,7 +78,7 @@ def _simulate_aisle_boarding(
 
         # Rule 4: Seating completion time
         last_row = int(last_passenger[:2]) if last_passenger else 0
-        if current_row > last_row:
+        if current_row >= last_row:
             passenger_time += last_time
 
         # Rule 2: Add luggage
@@ -94,7 +94,8 @@ def _simulate_aisle_boarding(
 
         # Mark this passenger as seated
         seated_passengers[seat] = True
-        last_time = passenger_time
+        # Prevent stacking time
+        last_time = max(passenger_time - last_time, 0)
         last_passenger = seat
 
         current_time += passenger_time

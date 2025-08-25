@@ -43,8 +43,7 @@ def run_boarding_simulations(n_simulations: int) -> pd.DataFrame:
             all_results.append(
                 {
                     "method": method.value,
-                    "boarding_time_seconds": time,
-                    "boarding_time_minutes": time / 60,
+                    "boarding_time_minutes": time,
                 }
             )
 
